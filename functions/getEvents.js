@@ -20,7 +20,6 @@ export const getEvents = async (event) => {
   });
   console.log('Fetched events:', res);
 
-  // תחזיר או תכניס למסד נתונים שלך
   for (const item of res?.data?.items) {
     console.log('item:', item);
     const body = {
