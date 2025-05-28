@@ -1,0 +1,130 @@
+service: my-serverless-service
+
+frameworkVersion: '4'
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: us-east-1
+  environment:
+    TABLE_NAME: InterviewsTable
+    SENDER_EMAIL: a0527187944@gmail.com
+    REMINDER_EMAIL: a0527187944@gmail.com
+
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:Query
+            - dynamodb:Scan
+          Resource:
+            - arn:aws:dynamodb:us-east-1:*:table/InterviewsTable
+        - Effect: Allow
+          Action:
+            - ses:SendEmail
+          Resource: "*"
+        - Effect: Allow
+          Action:
+            - ssm:GetParameter
+            - ssm:PutParameter
+          Resource:
+            - arn:aws:ssm:${self:provider.region}:${aws:accountId}:parameter/serverless-framework/deployment/google/*
+      
+functions:
+  createInterview:
+    handler: handler.createInterview
+    timeout: 30
+    events:
+      - http:
+          path: interview
+          method: post
+          cors:
+            origin: 'http://localhost:5173'
+            headers:
+              - Content-Type
+              - Authorization
+            methods:
+              - POST
+              - OPTIONS
+
+  updateInterview:
+    handler: handler.updateInterview
+    timeout: 30
+    events:
+      - http:
+          path: interview
+          method: put
+          cors:
+            origin: 'http://localhost:5173'
+            headers:
+              - Content-Type
+              - Authorization
+            methods:
+              - PUT
+              - OPTIONS
+
+  getInterviews:
+    handler: handler.getInterviews
+    timeout: 30
+    events:
+      - http:
+          path: getInterviews
+          method: get
+          cors:
+            origin: 'http://localhost:5173'
+            headers:
+              - Content-Type
+              - Authorization
+            methods:
+              - GET
+              - OPTIONS
+
+  getEvents:
+    handler: functions/getEvents.getEvents
+    timeout: 30
+    events:
+      - http:
+          path: interviews/sync
+          method: get
+          cors:
+            origin: 'http://localhost:5173'
+            headers:
+              - Content-Type
+              - Authorization
+            methods:
+              - GET
+              - OPTIONS
+      - schedule:
+          rate: rate(1 day)
+          enabled: true
+          name: DailyInterviewSync
+  
+  sendReminder:
+    handler: handler.sendReminder
+    events:
+      - eventBridge:
+          pattern:
+            source:
+              - "custom.interviewapp"
+            detail-type:
+              - "SendReminder"
+
+resources:
+  Resources:
+    InterviewsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: InterviewsTable
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+
+plugins:
+  - serverless-offline
