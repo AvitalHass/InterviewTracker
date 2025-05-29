@@ -1,5 +1,5 @@
 import { google } from "googleapis";
-import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
+import { SSMClient, GetParameterCommand, PutParameterCommand } from "@aws-sdk/client-ssm";
 
 const ssmClient = new SSMClient({ region: 'us-east-1' });
 const SCOPES = ['https://www.googleapis.com/auth/calendar.readonly'];
@@ -83,7 +83,7 @@ async function getTokenFromSSM() {
 
 async function saveTokenToSSM(token) {
   try {
-    const command = new AWS.PutParameterCommand({
+    const command = new PutParameterCommand({
       Name: TOKEN_PARAM_NAME,
       Value: JSON.stringify(token),
       Type: 'SecureString',
