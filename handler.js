@@ -298,7 +298,7 @@ export const sendReminder = async (event) => {
       Subject: { Data: "Reminder: Fill in your interview notes" },
       Body: {
         Text: {
-          Data: `Reminder: Please complete your interview notes for the session at ${interviewTime}.\n\nLink to interview: http://localhost:5173/interviewForm?id=${interviewId}`,
+          Data: `Reminder: Please complete your interview notes for the session at ${interviewTime}.\n\nLink to interview: https://main.df2bdo3hdl95b.amplifyapp.com/interviewForm?id=${interviewId}`,
         },
       },
     },
@@ -314,7 +314,7 @@ export const sendReminder = async (event) => {
 };
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': 'http://localhost:5173',
+  'Access-Control-Allow-Origin': 'https://main.df2bdo3hdl95b.amplifyapp.com',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
 };
