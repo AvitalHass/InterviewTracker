@@ -1,7 +1,9 @@
 import { google } from "googleapis";
 import { SSMClient, GetParameterCommand, PutParameterCommand } from "@aws-sdk/client-ssm";
+import { DynamoDBClient, GetItemCommand, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
 
 const ssmClient = new SSMClient({ region: 'us-east-1' });
+const dynamoClient = new DynamoDBClient({});
 const SCOPES = ['https://www.googleapis.com/auth/calendar.readonly'];
 const TOKEN_PARAM_NAME = '/serverless-framework/deployment/google/token';
 
@@ -29,7 +31,7 @@ async function authorize() {
   let token;
   try {
     token = await getTokenFromSSM();
-    console.log('Token retrieved from SSM:', token);
+    
     // Check if token is expired or will expire soon
     const expiryDate = token.expiry_date;
     const now = Date.now();
@@ -117,6 +119,46 @@ async function getNewToken(oAuth2Client) {
   
   // For now, this requires manual intervention:
   throw new Error('Authentication token missing or invalid. Please run the token generation script manually.');
+}
+
+
+export async function authorize(email) {
+  // 1. Get credentials from SSM (reuse getCredentialsFromSSM)
+  const credentials = await getCredentialsFromSSM();
+  const { client_secret, client_id, redirect_uris } = credentials.installed;
+  const oAuth2Client = new google.auth.OAuth2(
+    client_id, client_secret, redirect_uris[0]
+  );
+
+  // 2. Retrieve user's token from DynamoDB
+  const getCommand = new GetItemCommand({
+    TableName: process.env.USERS_TABLE,
+    Key: { email: { S: email } }
+  });
+  const { Item } = await dynamoClient.send(getCommand);
+  if (!Item || !Item.googleToken) {
+    throw new Error('No Google token found for user: ' + email);
+  }
+  const token = JSON.parse(Item.googleToken.S);
+
+  // 3. Set credentials and refresh if needed
+  oAuth2Client.setCredentials(token);
+  const now = Date.now();
+  if (token.expiry_date && token.expiry_date <= now + 5 * 60 * 1000) {
+    // Token expired or about to expire, refresh
+    const newToken = await oAuth2Client.refreshAccessToken();
+    oAuth2Client.setCredentials(newToken.credentials);
+    // Save refreshed token back to DynamoDB
+    await dynamoClient.send(new UpdateItemCommand({
+      TableName: process.env.USERS_TABLE,
+      Key: { email: { S: email } },
+      UpdateExpression: 'SET googleToken = :token',
+      ExpressionAttributeValues: {
+        ':token': { S: JSON.stringify(newToken.credentials) }
+      }
+    }));
+  }
+  return oAuth2Client;
 }
 
 export { authorize };

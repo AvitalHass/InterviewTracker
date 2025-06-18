@@ -2,76 +2,88 @@ import { DynamoDBClient, GetItemCommand, PutItemCommand, ScanCommand, UpdateItem
 import { v4 as uuidv4 } from "uuid";
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 import { EventBridgeClient, PutEventsCommand } from "@aws-sdk/client-eventbridge";
+import { OAuth2Client } from 'google-auth-library';
 
 const eb = new EventBridgeClient();
-
 const ses = new SESClient();
 const client = new DynamoDBClient({});
+const oAuth2Client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+// Helper function to extract token
+const getToken = (headers) => {
+  if (!headers?.Authorization) return null;
+  return headers.Authorization.replace('Bearer ', '');
+};
 
 export const getInterviews = async (event) => {
   try {
-    const { queryStringParameters } = event;
+    const { queryStringParameters, headers } = event;
     const { id, status, is_public } = queryStringParameters || {};
+    
+    const token = getToken(headers);
+    if (!token) {
+      return createResponse(401, { error: "Authorization required" });
+    }
+
+    // Verify the token and get user email
+    const ticket = await oAuth2Client.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID
+    });
+    const { email } = ticket.getPayload();
 
     const params = {
       TableName: process.env.TABLE_NAME,
-
+      FilterExpression: "#userEmail = :userEmail",
+      ExpressionAttributeNames: {
+        "#userEmail": "userEmail"
+      },
+      ExpressionAttributeValues: {
+        ":userEmail": { S: email }
+      }
     };
-    const filterExpressions = [];
-    const expressionAttributeNames = {};
-    const expressionAttributeValues = {};
 
     if (id) {
-      filterExpressions.push("#id = :id");
-      expressionAttributeNames["#id"] = "id";
-      expressionAttributeValues[":id"] = { S: id };
+      params.FilterExpression += " AND #id = :id";
+      params.ExpressionAttributeNames["#id"] = "id";
+      params.ExpressionAttributeValues[":id"] = { S: id };
     }
     if (status) {
-      filterExpressions.push("#status = :status");
-      expressionAttributeNames["#status"] = "status";
-      expressionAttributeValues[":status"] = { S: status };
+      params.FilterExpression += " AND #status = :status";
+      params.ExpressionAttributeNames["#status"] = "status";
+      params.ExpressionAttributeValues[":status"] = { S: status };
     }
     if (is_public) {
-      filterExpressions.push("#is_public = :is_public");
-      expressionAttributeNames["#is_public"] = "is_public";
-      expressionAttributeValues[":is_public"] = { S: is_public };
-    }
-
-    if (filterExpressions.length > 0) {
-      params.FilterExpression = filterExpressions.join(" AND ");
-      params.ExpressionAttributeNames = expressionAttributeNames;
-      params.ExpressionAttributeValues = expressionAttributeValues;
+      params.FilterExpression += " AND #is_public = :is_public";
+      params.ExpressionAttributeNames["#is_public"] = "is_public";
+      params.ExpressionAttributeValues[":is_public"] = { S: is_public };
     }
 
     const command = new ScanCommand(params);
     const data = await client.send(command);
     const res = {
       message: "Interviews fetched successfully",
-      interviews: data.Items.map((item) => {
-        console.log("Item:", item);
-        console.log("Raw questions string:", item.questions?.S);
-
-        return {
-          id: item.id.S,
-          company: item.company.S,
-          role: item.role.S,
-          date: item.date.S,
-          type: item.type.S,
-          status: item.status.S,
-          interviewers: item.interviewers ? JSON.parse(item.interviewers.S) : [],
-          passed: item.passed ? JSON.parse(item.passed.S) : false,
-          performance_rating: item.performance_rating?.S ?? 5,
-          questions: item.questions ? JSON.parse(item.questions.S) : [],
-          confident_answers: item.confident_answers?.S ?? null,
-          challenging_questions: item.challenging_questions?.S ?? null,
-          strengths: item.strengths?.S ?? null,
-          improvements: item.improvements?.S ?? null,
-          connection: item.connection?.S ?? null,
-          comfort_level: item.comfort_level?.S ?? null,
-          notes: item.notes?.S ?? null,
-          is_public: item.is_public ? JSON.parse(item.is_public.S) : false
-        };
-      }),
+      interviews: data.Items.map((item) => ({
+        id: item.id.S,
+        company: item.company.S,
+        role: item.role.S,
+        date: item.date.S,
+        type: item.type.S,
+        status: item.status.S,
+        userEmail: item.userEmail.S,
+        interviewers: item.interviewers ? JSON.parse(item.interviewers.S) : [],
+        passed: item.passed ? JSON.parse(item.passed.S) : false,
+        performance_rating: item.performance_rating?.S ?? 5,
+        questions: item.questions ? JSON.parse(item.questions.S) : [],
+        confident_answers: item.confident_answers?.S ?? null,
+        challenging_questions: item.challenging_questions?.S ?? null,
+        strengths: item.strengths?.S ?? null,
+        improvements: item.improvements?.S ?? null,
+        connection: item.connection?.S ?? null,
+        comfort_level: item.comfort_level?.S ?? null,
+        notes: item.notes?.S ?? null,
+        is_public: item.is_public ? JSON.parse(item.is_public.S) : false
+      })),
     };
     return createResponse(200, res);
   } catch (error) {
@@ -85,10 +97,22 @@ export const createInterview = async (event) => {
   try {
     const body = JSON.parse(event.body);
     const id = uuidv4();
-    console.log("Create Body:", body);
-    console.log("Create ID:", id);
+    
+    const token = getToken(event.headers);
+    if (!token) {
+      return createResponse(401, { error: "Authorization required" });
+    }
+
+    // Verify the token and get user email
+    const ticket = await oAuth2Client.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID
+    });
+    const { email } = ticket.getPayload();
+
     const item = {
       id: { S: id },
+      userEmail: { S: email }, // Add user email to the interview
       company: { S: body.company },
       role: { S: body.role },
       date: { S: body.date },
@@ -114,7 +138,7 @@ export const createInterview = async (event) => {
     });
 
     await client.send(command);
-    console.log("Create succeed", item);
+    
     const reminderTime = new Date(new Date(body.date).getTime() + 5 * 60 * 1000);
     console.log("Interview Time (ms):", body.date);
     console.log("Interview Time (UTC):", new Date(body.date).toISOString());
@@ -126,7 +150,7 @@ export const createInterview = async (event) => {
           Source: "custom.interviewapp",
           DetailType: "SendReminder",
           Detail: JSON.stringify({
-            email: process.env.REMINDER_EMAIL, // Extracted from environment variable
+            email: userEmail,
             interviewId: id,
             interviewTime: body.date,
           }),
@@ -146,45 +170,65 @@ export const createInterview = async (event) => {
 export const updateInterview = async (event) => {
   try {
     const body = JSON.parse(event.body);
-    const { id, company, role, date, type, status } = body;
-    console.log("Update Body:", body);
-    console.log("Update ID:", id);
-    if (!id) {
-      return createResponse(400, { error: "Interview ID is required" });
+    const { id } = body;
+    
+    const token = getToken(event.headers);
+    if (!token) {
+      return createResponse(401, { error: "Authorization required" });
+    }
+
+    // Verify the token and get user email
+    const ticket = await oAuth2Client.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID
+    });
+    const { email } = ticket.getPayload();
+
+    // Verify interview ownership
+    const getCommand = new GetItemCommand({
+      TableName: process.env.TABLE_NAME,
+      Key: {
+        id: { S: id }
+      }
+    });
+    
+    const interview = await client.send(getCommand);
+    if (!interview.Item || interview.Item.userEmail.S !== email) {
+      return createResponse(403, { error: "Not authorized to update this interview" });
     }
 
     const updateExpression = [];
     const expressionAttributeNames = {};
     const expressionAttributeValues = {};
 
-    if (company) {
+    if (body.company) {
       updateExpression.push("#company = :company");
       expressionAttributeNames["#company"] = "company";
-      expressionAttributeValues[":company"] = { S: company };
+      expressionAttributeValues[":company"] = { S: body.company };
     }
 
-    if (role) {
+    if (body.role) {
       updateExpression.push("#role = :role");
       expressionAttributeNames["#role"] = "role";
-      expressionAttributeValues[":role"] = { S: role };
+      expressionAttributeValues[":role"] = { S: body.role };
     }
 
-    if (date) {
+    if (body.date) {
       updateExpression.push("#date = :date");
       expressionAttributeNames["#date"] = "date";
-      expressionAttributeValues[":date"] = { S: date };
+      expressionAttributeValues[":date"] = { S: body.date };
     }
 
-    if (type) {
+    if (body.type) {
       updateExpression.push("#type = :type");
       expressionAttributeNames["#type"] = "type";
-      expressionAttributeValues[":type"] = { S: type };
+      expressionAttributeValues[":type"] = { S: body.type };
     }
 
-    if (status) {
+    if (body.status) {
       updateExpression.push("#status = :status");
       expressionAttributeNames["#status"] = "status";
-      expressionAttributeValues[":status"] = { S: status };
+      expressionAttributeValues[":status"] = { S: body.status };
     }
     if (body.interviewers) {
       updateExpression.push("#interviewers = :interviewers");
@@ -271,10 +315,9 @@ export const updateInterview = async (event) => {
       ExpressionAttributeValues: expressionAttributeValues,
       ReturnValues: "ALL_NEW",
     };
-    console.log("Update Params:", params);
     const command = new UpdateItemCommand(params);
     const data = await client.send(command);
-    console.log("Update succeed", data);
+    
     return createResponse(200, { message: "Interview updated", updatedItem: data.Attributes });
   } catch (error) {
     console.error(error);

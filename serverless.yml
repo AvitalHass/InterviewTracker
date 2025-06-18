@@ -8,8 +8,9 @@ provider:
   region: us-east-1
   environment:
     TABLE_NAME: InterviewsTable
+    USERS_TABLE: UsersTable
     SENDER_EMAIL: a0527187944@gmail.com
-    REMINDER_EMAIL: a0527187944@gmail.com
+    GOOGLE_CLIENT_ID: ${ssm:/serverless-framework/deployment/google/client_id}
 
   iam:
     role:
@@ -22,6 +23,7 @@ provider:
             - dynamodb:Scan
           Resource:
             - arn:aws:dynamodb:us-east-1:*:table/InterviewsTable
+            - arn:aws:dynamodb:us-east-1:*:table/UsersTable
         - Effect: Allow
           Action:
             - ses:SendEmail
@@ -32,6 +34,7 @@ provider:
             - ssm:PutParameter
           Resource:
             - arn:aws:ssm:${self:provider.region}:${aws:accountId}:parameter/serverless-framework/deployment/google/*
+            - arn:aws:ssm:${self:provider.region}:${aws:accountId}:parameter/serverless-framework/deployment/google-signin/*
       
 functions:
   createInterview:
@@ -112,6 +115,58 @@ functions:
             detail-type:
               - "SendReminder"
 
+  verifyGoogleToken:
+    handler: auth.verifyGoogleToken
+    timeout: 30
+    events:
+      - http:
+          path: auth/google
+          method: post
+          cors:
+            origin: 'https://main.df2bdo3hdl95b.amplifyapp.com'
+            headers:
+              - Content-Type
+              - Authorization
+            methods:
+              - POST
+              - OPTIONS
+
+  getUserData:
+    handler: auth.getUserData
+    timeout: 30
+    events:
+      - http:
+          path: auth/user
+          method: get
+          cors:
+            origin: 'https://main.df2bdo3hdl95b.amplifyapp.com'
+            headers:
+              - Content-Type
+              - Authorization
+            methods:
+              - GET
+              - OPTIONS
+
+  getEventsAllUsers:
+    handler: functions/getEventsAllUsers.getEventsAllUsers
+    timeout: 60
+    events:
+      - http:
+          path: interviews/syncAll
+          method: get
+          cors:
+            origin: 'https://main.df2bdo3hdl95b.amplifyapp.com'
+            headers:
+              - Content-Type
+              - Authorization
+            methods:
+              - GET
+              - OPTIONS
+      - schedule:
+          rate: rate(1 day)
+          enabled: true
+          name: DailyInterviewSyncAll
+
 resources:
   Resources:
     InterviewsTable:
@@ -123,6 +178,18 @@ resources:
             AttributeType: S
         KeySchema:
           - AttributeName: id
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+
+    UsersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: UsersTable
+        AttributeDefinitions:
+          - AttributeName: email
+            AttributeType: S
+        KeySchema:
+          - AttributeName: email
             KeyType: HASH
         BillingMode: PAY_PER_REQUEST
 
