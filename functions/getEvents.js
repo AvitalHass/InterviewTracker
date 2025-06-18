@@ -72,7 +72,7 @@ export const getEvents = async (event) => {
     return {
       statusCode: 200,
       headers: {
-        'Access-Control-Allow-Origin': 'http://localhost:5173',
+        'Access-Control-Allow-Origin': 'https://main.df2bdo3hdl95b.amplifyapp.com',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization'
       },
       body: JSON.stringify({ message: "Calendar events synced successfully" })
@@ -82,7 +82,7 @@ export const getEvents = async (event) => {
     return {
       statusCode: 500,
       headers: {
-        'Access-Control-Allow-Origin': 'http://localhost:5173',
+        'Access-Control-Allow-Origin': 'https://main.df2bdo3hdl95b.amplifyapp.com',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization'
       },
       body: JSON.stringify({ error: "Failed to sync calendar events" })
