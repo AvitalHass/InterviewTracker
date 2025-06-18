@@ -45,7 +45,7 @@ functions:
           path: interview
           method: post
           cors:
-            origin: 'http://localhost:5173/'
+            origin: 'https://main.df2bdo3hdl95b.amplifyapp.com'
             headers:
               - Content-Type
               - Authorization
@@ -61,7 +61,7 @@ functions:
           path: interview
           method: put
           cors:
-            origin: 'http://localhost:5173/'
+            origin: 'https://main.df2bdo3hdl95b.amplifyapp.com'
             headers:
               - Content-Type
               - Authorization
@@ -77,7 +77,7 @@ functions:
           path: getInterviews
           method: get
           cors:
-            origin: 'http://localhost:5173/'
+            origin: 'https://main.df2bdo3hdl95b.amplifyapp.com'
             headers:
               - Content-Type
               - Authorization
@@ -93,7 +93,7 @@ functions:
           path: interviews/sync
           method: get
           cors:
-            origin: 'http://localhost:5173/'
+            origin: 'https://main.df2bdo3hdl95b.amplifyapp.com'
             headers:
               - Content-Type
               - Authorization
@@ -123,7 +123,7 @@ functions:
           path: auth/google
           method: post
           cors:
-            origin: 'http://localhost:5173/'
+            origin: 'https://main.df2bdo3hdl95b.amplifyapp.com'
             headers:
               - Content-Type
               - Authorization
@@ -139,7 +139,7 @@ functions:
           path: auth/user
           method: get
           cors:
-            origin: 'http://localhost:5173/'
+            origin: 'https://main.df2bdo3hdl95b.amplifyapp.com'
             headers:
               - Content-Type
               - Authorization
@@ -155,7 +155,7 @@ functions:
           path: interviews/syncAll
           method: get
           cors:
-            origin: 'http://localhost:5173/'
+            origin: 'https://main.df2bdo3hdl95b.amplifyapp.com'
             headers:
               - Content-Type
               - Authorization

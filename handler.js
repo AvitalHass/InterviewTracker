@@ -358,7 +358,7 @@ export const sendReminder = async (event) => {
 };
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': 'http://localhost:5173/',
+  'Access-Control-Allow-Origin': 'https://main.df2bdo3hdl95b.amplifyapp.com',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
 };
