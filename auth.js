@@ -105,7 +105,7 @@ export const getUserData = async (event) => {
 
 // Update CORS headers to remove trailing slash
 const corsHeaders = {
-  'Access-Control-Allow-Origin': 'http://localhost:5173',
+  'Access-Control-Allow-Origin': 'https://main.df2bdo3hdl95b.amplifyapp.com',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 };
