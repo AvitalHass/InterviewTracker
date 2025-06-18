@@ -17,7 +17,7 @@ async function getToken() {
   const raw = credentials.Parameter.Value;
   const parsed = JSON.parse(raw);
   const { client_secret, client_id, redirect_uris } = parsed.installed;
-  console.log('1');
+  
   if (!client_id || !client_secret || !redirect_uris) {
     console.error('Missing required environment variables');
     process.exit(1);
@@ -26,7 +26,7 @@ async function getToken() {
   const oAuth2Client = new google.auth.OAuth2(
     client_id, client_secret, redirect_uris[0]
   );
-  console.log('2');
+  
   const authUrl = oAuth2Client.generateAuthUrl({
     access_type: 'offline',
     scope: SCOPES,

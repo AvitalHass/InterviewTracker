@@ -7,7 +7,6 @@ const oAuth2Client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 export const verifyGoogleToken = async (event) => {
   try {
     let token;
-    console.log('client:', process.env.GOOGLE_CLIENT_ID);
     // Check if token is in body
     if (event.body) {
       const body = JSON.parse(event.body);
@@ -19,7 +18,6 @@ export const verifyGoogleToken = async (event) => {
       token = event.headers.Authorization.replace('Bearer ', '');
     }
 
-    console.log('Received token:', token);
     if (!token) {
       return createResponse(400, { error: 'Token is required' });
     }
@@ -29,7 +27,6 @@ export const verifyGoogleToken = async (event) => {
       idToken: token,
       audience: process.env.GOOGLE_CLIENT_ID
     });
-    console.log('Token verified:', ticket);
     const payload = ticket.getPayload();
     const { email, name, picture } = payload;
 

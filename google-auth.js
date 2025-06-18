@@ -31,7 +31,7 @@ async function authorize() {
   let token;
   try {
     token = await getTokenFromSSM();
-    console.log('Token retrieved from SSM:', token);
+    
     // Check if token is expired or will expire soon
     const expiryDate = token.expiry_date;
     const now = Date.now();

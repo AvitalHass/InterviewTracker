@@ -138,7 +138,7 @@ export const createInterview = async (event) => {
     });
 
     await client.send(command);
-    console.log("Create succeed", item);
+    
     const reminderTime = new Date(new Date(body.date).getTime() + 5 * 60 * 1000);
     console.log("Interview Time (ms):", body.date);
     console.log("Interview Time (UTC):", new Date(body.date).toISOString());
@@ -315,10 +315,9 @@ export const updateInterview = async (event) => {
       ExpressionAttributeValues: expressionAttributeValues,
       ReturnValues: "ALL_NEW",
     };
-    console.log("Update Params:", params);
     const command = new UpdateItemCommand(params);
     const data = await client.send(command);
-    console.log("Update succeed", data);
+    
     return createResponse(200, { message: "Interview updated", updatedItem: data.Attributes });
   } catch (error) {
     console.error(error);
