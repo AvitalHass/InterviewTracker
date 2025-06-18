@@ -122,8 +122,6 @@ async function getNewToken(oAuth2Client) {
 }
 
 
-// Placeholder: Retrieve OAuth2 client for a specific user
-// You must implement logic to fetch and refresh each user's token
 export async function authorize(email) {
   // 1. Get credentials from SSM (reuse getCredentialsFromSSM)
   const credentials = await getCredentialsFromSSM();
