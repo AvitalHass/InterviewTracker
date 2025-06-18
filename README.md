@@ -69,6 +69,3 @@ InterviewTracker is a simple serverless project for tracking job interviews, bui
 
 ISC
 
----
-
-> _Note: This README is based on auto-detected project files and may require edits for accuracy or completeness._
